@@ -2,135 +2,148 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Serialization;
 
 public class Patrol : MonoBehaviour
 {
     AIController aC;
-    private NavMeshAgent myAgent; 
+    private NavMeshAgent myAgent;
 
-    [SerializeField]
-    private int myPatrol;
+    [SerializeField] private int myPatrol;
+    private GameObject myTile;
     private int n;
 
-    [SerializeField]
-    List<Transform> PatrolPoints;
-    
+    //Lists
+    public List<Transform> patrolPoints = new List<Transform>();
+    public List<GameObject> tileSpawns = new List<GameObject>();
     public int destination;
     public bool next;
     public bool adam;
 
-    void Awake(){
-        PatrolPoints = new List<Transform>();
+    private void Awake()
+    {
         aC = GetComponent<AIController>();
-        PatrolPoints.Add(GameObject.Find("North").transform);
-        PatrolPoints.Add(GameObject.Find("East").transform);
-        PatrolPoints.Add(GameObject.Find("South").transform);
-        PatrolPoints.Add(GameObject.Find("West").transform);
-        PatrolPoints.Add(GameObject.Find("Northeast").transform);
-        PatrolPoints.Add(GameObject.Find("Southeast").transform);
-        PatrolPoints.Add(GameObject.Find("Southwest").transform);
-        PatrolPoints.Add(GameObject.Find("Northwest").transform);
+
+        foreach (GameObject tile in GameObject.FindGameObjectsWithTag("TS"))
+        {
+            tileSpawns.Add(tile);
+
+        }
+
+        int rand = Random.Range(0, tileSpawns.Count);
+        myTile = tileSpawns[rand];
+        foreach (var tf in myTile.GetComponentsInChildren<Transform>())
+        {
+            if (tf.gameObject.CompareTag("CS"))
+            {
+                patrolPoints.Add(tf);
+            }
+        }
     }
 
-    void Start()
+    private void Start()
     {
-        myAgent = aC.m_agent;
+        myAgent = aC.agent;
         GetPatrol();
     }
 
-    void Update()
+    private void Update()
     {
-        if (!aC.canHear) GoPatrol();
+
+        if (aC.canHear == false) GoPatrol();
         if (!aC.m_target) GoPatrol();
-        if (Arrived() && myPatrol == 0) {
+        if (AvoidEnemy() && myPatrol != 1) destination = Random.Range(0, 3);
+        if (Arrived() && myPatrol == 0)
+        {
             next = !next;
             ChangeVerticalDestination();
-            Verticle();
+            GoPatrol();
         }
-        if (Arrived() && myPatrol == 1){
+        else if (Arrived() && myPatrol == 1)
+        {
             adam = !adam;
             bool john = false;
-            if (destination == 7) { john = true; }
-            if (john) { destination = 3; }
+            john = destination == 7;
+            if (john)
+            {
+                destination = 3;
+            }
+
             ChangeCircularDestination();
-            Circular();
+            GoPatrol();
         }
-        if (Arrived() && myPatrol == 2)
+        else if (Arrived() && myPatrol == 2)
         {
             if (n == 4) n = 0;
             ChangeBoxDestination();
-            Box();
+            GoPatrol();
         }
-        if (Arrived() && myPatrol == 3)
+        else if (Arrived() && myPatrol == 3)
         {
             ChangeRoamDestination();
-            Roam();
+            GoPatrol();
         }
+        else return;
 
     }
 
-    bool GetPatrol()
+    public void GetPatrol()
     {
         int rand = Random.Range(0, 4);
         myPatrol = rand;
-        if (!aC.canHear) return true; else return false;
     }
-    
-    bool Arrived()
+
+    private bool Arrived()
     {
         float dist = myAgent.remainingDistance;
-        if (dist != Mathf.Infinity && myAgent.pathStatus == NavMeshPathStatus.PathComplete && myAgent.remainingDistance < 0.01)
+        if (dist != Mathf.Infinity && myAgent.pathStatus == NavMeshPathStatus.PathComplete &&
+            myAgent.remainingDistance < 0.01)
             return true;
+        else return false;
+    }
+
+    private bool AvoidEnemy()
+    {
+        if (Physics.Raycast(transform.position, transform.forward.normalized, out RaycastHit hit, aC.sightDistance)
+        ) //Shoot Raycast
+            if (hit.collider.CompareTag("Enemy")) //Check for other Enemies
+                return true;
+            else
+                return false;
         else return false;
     }
 
     //Patrols Methods
     void GoPatrol()
     {
-        switch (myPatrol)
-        {
-            case 0: Verticle(); break;
-            case 1: Circular(); break;
-            case 2: Box(); break;
-            case 3: Roam(); break;
-        };
+        myAgent.destination = patrolPoints[destination].position;
     }
 
-    void Verticle() {
-        myAgent.destination = PatrolPoints[destination].position;
-    }
-    void Circular(){
-        myAgent.destination = PatrolPoints[destination].position;
-    }
-    void Box(){
-        myAgent.destination = PatrolPoints[destination].position;
-    }
-    void Roam(){
-        myAgent.destination = PatrolPoints[destination].position;
+    void ChangeVerticalDestination()
+    {
+        if (next) destination = 0;
+        else destination = 2;
+        //destination += 2;
+        //destination %= 4;
+
     }
 
-    void ChangeVerticalDestination(){
-        if (next) destination = 0; else destination = 2;
+    void ChangeCircularDestination()
+    {
+        if (adam) destination += 4;
+        else destination -= 3;
     }
-    void ChangeCircularDestination(){
-        if (adam) destination += 4; else destination -=3;
-    }
-    void ChangeBoxDestination(){
+
+    void ChangeBoxDestination()
+    {
         destination = 3;
         n += 1;
         destination += n;
     }
+
     void ChangeRoamDestination()
     {
         int random = Random.Range(0, 8);
-        destination = random; 
+        destination = random;
     }
 }
-
-/*
-       //Debug.Log("Arrive: " + Arrived());
-       //Debug.Log("Distance: " + myAgent.remainingDistance);
-       //foreach(Transform p in PatrolPoints) Debug.Log(p);
-       //destination += 2;
-       //destination %= 4;
- */

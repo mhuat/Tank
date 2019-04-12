@@ -12,144 +12,271 @@ public class AIController : MonoBehaviour
     //Booleans
     [SerializeField]
     private bool canFire = false;
-    public bool canHear = false;
-    private bool bearring = true;
+    private bool ismAgentNotNull;
+    public bool canHear;
+    public bool canSee;
+    private bool bearing = true;
 
     //[Header("Tank Data")]*******
     //Number Values
-    public int next;
-    public int previous;
-    [Header("")]
-    [Header("Field Of View In Degrees")]
-    [SerializeField]
-    [Range(0, 360)]
+    public int pointValue;
+    [Header("")] 
+    [Header("Field Of View In Degrees")] 
+    [SerializeField] [Range(0, 360)]
     private float fieldOfView;
-    private float distanceToRun = 10f;
+    private float fleeDistance = 20f;
     [Header("")]
     public float hearDistance = 10f;
     public float sightDistance = 10f;
-    //private float timeCount = .5f;
+    public float rotationSpeed;
 
     //Enum
-    public enum Personality { Alert, Clever, Shy, Skillful };
-    public enum Mood { Happy, Mad, Sad, Scared };
+    public enum Personality
+    {
+        Alert,
+        Clever,
+        Shy,
+        Skillful
+    };
+
+    public enum Mood
+    {
+        Happy,
+        Mad,
+        Sad,
+        Scared
+    };
 
     [Header("Tank Specs")]
     //GameObjects
-    public GameObject barrel;
     public GameObject instance;
     public GameObject m_target;
 
     //Instances
     public TankData tankData;
-    [Header("")]
-    public Personality personality;
+    [Header("")] public Personality personality;
+    public Patrol patrol;
+    private RaycastHit hit;
 
     //Transforms
     private Transform tf;
-    [HideInInspector]
-    public NavMeshAgent m_agent;
+    Transform target;
+    [HideInInspector] public NavMeshAgent agent;
+    private Transform barrel;
 
-    void Awake() {
-        instance = this.gameObject;
-        m_agent = instance.GetComponent<NavMeshAgent>(); //Initialize instance's m_agent.
+    //RigidBody
+    private Rigidbody rb;
+    
+    
+    //Instance was initialized to avoid repetition  
+    void Awake()
+    {
+        instance = gameObject;
+        agent = instance.GetComponent<NavMeshAgent>(); //Initialize instance's m_agent.
         tankData = instance.GetComponent<TankData>(); //Initialize instance's TankData Instance.
         tf = instance.GetComponent<Transform>(); //Initialize instance's transform.
-        hearDistance = instance.GetComponent<AIController>().hearDistance; //Intialize instance's hearDistance.
+        hearDistance = instance.GetComponent<AIController>().hearDistance; //Initialize instance's hearDistance.
         sightDistance = instance.GetComponent<AIController>().sightDistance;
         fieldOfView = instance.GetComponent<AIController>().fieldOfView;
         personality = instance.GetComponent<AIController>().personality;
+        patrol = instance.GetComponent<Patrol>();
+        barrel = tankData.tankBarrel;
+        ismAgentNotNull = agent != null;
+        rb = instance.GetComponent<Rigidbody>();
     }
 
-    void Update() {
-        if (GameManager.instance.player != null && m_target == null)
-        { m_target = GameManager.instance.player; } //If there is an active Player, initialize player reference.
-        if (m_target != null && personality == Personality.Alert)
+    private void Start()
+    {
+        ismAgentNotNull = agent != null;
+    }
+
+    void Update()
+    {
+
+        if (tankData.health <= 0)
         {
-            if (CanSee()) { LoadShell(); FireShell(); }
-            if (CanHear()) { LookAtPlayer(); MoveToTarget(); } //If the Player is seen, look at the Player and Fire a Shell when capable. 
+            //agent = null;
+            //ismAgentNotNull = false;
+            GameManager.instance.score += pointValue;
         }
-        if (m_target != null && personality == Personality.Clever)
+
+        if (GameManager.instance.player && !m_target)
         {
-            if (CanSee()) { LookAtPlayer(); canFire = true; FireShell(); }
-            if (CanHear()) { LookAtPlayer(); MoveToTarget(); }
+            m_target = GameManager.instance.player; //If there is an active Player, initialize player reference.
         }
-        if (m_target != null && personality == Personality.Skillful)
+
+        if (!GameManager.instance.player)
         {
-            if (CanSee()) { bearring = false; LookAtPlayer(); LoadShell(); FireShell(); }
+            canHear = false;
+            canSee = false;
         }
-        if (m_target != null && personality == Personality.Shy)
+
+        if (GameManager.instance.player)
         {
-            if (CanSee()) { LookAtPlayer(); Flee(); }
-            if (CanHear() && m_target.GetComponent<PlayerController>().moving == true) { m_agent.stoppingDistance = 0; LookAtPlayer(); Flee(); }
+            CanSee();
+            CanHear();
         }
-        if (personality == Personality.Skillful)
+
+        if (!canHear && ismAgentNotNull){
+            agent.isStopped = false;
+            target = patrol.patrolPoints[patrol.destination];
+        }
+        else
         {
-            if (m_target == null) bearring = true;
-            ChangeState(bearring);
+            if (personality == Personality.Alert && m_target)
+            {
+                if (canSee){
+                    LoadShell();
+                    FireShell();
+                }
+
+                if (canHear && ismAgentNotNull)
+                {
+                    agent.isStopped = true;
+                    float torque = 20;
+                    float turn = Input.GetAxis("Horizontal");
+                    rb.AddTorque(transform.up * torque * turn);
+                    Vector3 targetDir = m_target.transform.position - tf.position;
+                    float step = rotationSpeed * Time.deltaTime;
+                    Vector3 newDir = Vector3.RotateTowards(tf.forward, targetDir, step, 0.0f);
+                    transform.rotation = Quaternion.LookRotation(newDir);
+                    /* //Good
+                    target = GameManager.instance.player.transform;
+                    Vector3 relativePos = target.position - tf.position;
+                    Quaternion rotation = Quaternion.LookRotation(relativePos);
+                    tf.rotation = Quaternion.Lerp(tf.rotation, rotation, rotationSpeed * Time.deltaTime);*/
+                }
+            }
+
+            if (personality == Personality.Shy && m_target)
+            {
+                if(canHear) Flee();
+            }
+
+            if (personality == Personality.Clever && m_target)
+            {
+                if (canSee){
+                    LoadShell();
+                    FireShell();
+                }
+                if (canHear)
+                {
+                    float dist = Vector3.Distance(m_target.transform.position, tf.position);
+                    if (dist > 15f)
+                    {
+                        ShiftRotation();
+                        MoveToTarget();
+                    }
+                    else
+                    {
+                        ShiftRotation();
+                        agent.isStopped = true;
+                    }
+
+                }
+            }
+            if (personality == Personality.Skillful && m_target)
+            {
+                if (canSee){
+                    LoadShell();
+                    FireShell();
+                }
+                if (canHear&& ismAgentNotNull)
+                {
+                    agent.isStopped = true;
+                    ShiftRotation();
+                }
+            }
         }
     }
 
-    void MoveToTarget(){ //Chase the Player instance.
-        m_agent.destination = m_target.transform.position; //Takes the agent component's destination of the AI and sets it to target's updated position.
+    void ShiftRotation()
+    {
+        float torque = 20f;
+        float turn = Input.GetAxis("Horizontal");
+        rb.AddTorque(transform.up * torque * turn);
+        Vector3 targetDir = m_target.transform.position - tf.position;
+        float step = rotationSpeed * Time.deltaTime;
+        Vector3 newDir = Vector3.RotateTowards(tf.forward, targetDir, step, 0.0f);
+        transform.rotation = Quaternion.LookRotation(newDir);
     }
-    void LookAtPlayer(){
-        transform.LookAt(m_target.transform);
+
+    void MoveToTarget()
+    {
+        agent.stoppingDistance = 10f;
+        //Chase the Player instance.
+        agent.destination =
+            m_target.transform
+                .position; //Takes the agent component's destination of the AI and sets it to target's updated position.
     }
-    void Flee(){
+
+    void Flee()
+    {
         float distance = Vector3.Distance(transform.position, m_target.transform.position);
-        if (distance < distanceToRun)
+        if (distance < fleeDistance)
         {
             Vector3 dir = transform.position - m_target.transform.position;
-            Vector3 newPos = transform.position + dir;
-            m_agent.SetDestination(newPos);
+            Vector3 newPos = tf.position + dir;
+            agent.SetDestination(newPos);
         }
-    }
-    void ChangeState(bool baren)
-    {
-        if (bearring==false) { m_agent.speed = 7; }
-        if (bearring ==true) { m_agent.speed = 1; }
     }
 
-    bool CanHear(){
-            float noiseDistance = Vector3.Distance(m_target.transform.position, tf.position); //Unity's Distance Formula to return a float.
-            if (noiseDistance <= hearDistance) { canHear = true; m_agent.stoppingDistance = 5; return true; } //When Heard Do{};
-            else { canHear = false; m_agent.stoppingDistance = 0; return false; } //If not heard Do{};
+    void ChangeState(bool baren)
+    {
+        if (bearing == false)
+        {
+            agent.speed = 7;
+        }
+
+        if (bearing == true)
+        {
+            agent.speed = 3.5f;
+        }
     }
-    bool CanSee(){
-            Vector3 direction = m_target.transform.position - tf.position;
-            float angle = Vector3.Angle(direction, tf.forward);
+
+    void CanHear()
+    {
+        float noiseDistance =
+            Vector3.Distance(m_target.transform.position,
+                tf.position); //Unity's Distance Formula to return a float.
+        if (noiseDistance <= hearDistance)
+            canHear = true; //m_agent.stoppingDistance = 10f; return true; } //When Heard Do{};
+        else canHear = false; //m_agent.stoppingDistance = 0; return false; } //If not heard Do{};
+    }
+
+    void CanSee()
+    {
+        Vector3 direction = m_target.transform.position - tf.position;
+        float angle = Vector3.Angle(direction, tf.forward);
         if (angle <= fieldOfView * 0.5f)
         {
-            RaycastHit hit;
-            if (Physics.Raycast(tf.position, direction.normalized, out hit, sightDistance))
+            if (Physics.Raycast(tf.position, tf.TransformDirection(Vector3.forward), out hit, sightDistance))
             {
-                return true;
+                canSee = hit.transform.CompareTag("Player");
             }
-            else return false;
         }
-        else if (angle > fieldOfView * 0.5f)
-        {
-            return false;
-        }
-        else return false;
     }
 
     void LoadShell(){
-        tankData.m_fireRate -= Time.deltaTime;
-        if (tankData.m_fireRate <= 0f){
+        tankData.fireRate -= Time.deltaTime;
+        if (tankData.fireRate <= 0f){
             canFire = true;
-            tankData.m_fireRate = tankData.m_resetValue;
+            tankData.fireRate = tankData.resetValue;
         }
     }
-    void FireShell(){
-        if (canFire){
-            GameObject shellInstance = Instantiate(tankData.shellPrefab, barrel.transform.position, barrel.transform.rotation);
-            shellInstance.GetComponent<Rigidbody>().AddForce(shellInstance.transform.forward * tankData.m_shellForce * Time.deltaTime, ForceMode.Impulse); //Addforce to shellinstance's rigidbody. 
+    
+    bool FireShell(){
+        if (canFire)
+        {
+            Instantiate(tankData.smoke, barrel.position, barrel.rotation);
+            GameObject shellInstance = Instantiate(tankData.shellPrefab, barrel);
+            
             shellInstance.tag = "Enemy Shell"; //Tag bullet instance.
-            shellInstance.transform.SetParent(barrel.transform); //Sets this bullet's parent to this instance's transform.
+            shellInstance.transform.SetParent(gameObject.transform); //Sets this bullet's parent to this instance's transform.
             canFire = false;
         }
+
+        return true;
     }
 
     //End of class
@@ -160,6 +287,7 @@ public class AIController : MonoBehaviour
 //previous = GameManager.instance.L_Enemy.Count; 
 //next = previous + 1;
 //new Vector3(tankData.tankBarrel.transform.position.x + 1, tankData.tankBarrel.transform.position.y, tankData.tankBarrel.transform.position.z)
+//shellInstance.GetComponent<Rigidbody>().AddForce(shellInstance.transform.forward * tankData.m_shellForce, ForceMode.Impulse); //Add force to shell instance's rigid body.
 
 #region Notes
 /*
@@ -307,4 +435,45 @@ bool CanSee()
 //Debug.DrawLine(GameManager.instance.player.transform.position, instance.transform.position, Color.red);
 
 */
+/*
+void LookAtPlayer(){
+    var targetPoint = m_target.transform.position;
+    var targetRotation = Quaternion.LookRotation(targetPoint - transform.position, Vector3.up);
+    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 2.0f);
+    //transform.LookAt(m_target.transform);
+
+    transform.rotation = Quaternion.Slerp(transform.rotation, m_target.transform.rotation, timeCount);
+    timeCount = timeCount + Time.deltaTime;
+
+    Vector3 lookVector = GameManager.instance.player.transform.position - tf.position;
+    Quaternion rotateTowards = Quaternion.LookRotation(lookVector);
+    tf.rotation = Quaternion.RotateTowards(tf.rotation, rotateTowards, timeCount);
+}*/
+//Hello
+/*
+//Clever
+if (m_target != null && personality == Personality.Clever)
+{
+
+    if (CanSee()) { LookAtPlayer(); LoadShell(); FireShell(); }
+    if (CanHear()) { LookAtPlayer(); MoveToTarget(); }
+}
+//Skillful
+if (m_target != null && personality == Personality.Skillful)
+{
+    if (CanSee()) { bearring = false; LookAtPlayer(); LoadShell(); FireShell(); }
+}
+//Shy
+if (m_target != null && personality == Personality.Shy)
+{
+    if (CanSee()) { LookAtPlayer(); Flee(); }
+    if (CanHear()) { m_agent.stoppingDistance = 0; LookAtPlayer(); Flee(); }
+}
+if (personality == Personality.Skillful)
+{
+    if (m_target == null) bearring = true;
+    ChangeState(bearring);
+}*/
+
+
 #endregion

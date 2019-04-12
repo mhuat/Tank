@@ -36,7 +36,7 @@ public class UIManager : MonoBehaviour
 
 	private void Update ()
 	{
-	    if (GameManager.instance.m_isDead)
+	    if (GameManager.instance.isDead)
 	    {
             DisplayText();
 	    }
@@ -52,7 +52,7 @@ public class UIManager : MonoBehaviour
     public void StartCountDown()
     {
         m_displayText.enabled = true;
-        m_displayText.text = "|Game Starts in: "+GameManager.instance.m_startCountDown.ToString("f0")+" seconds|";
+        m_displayText.text = "|Game Starts in: "+GameManager.instance.startCountDown.ToString("f0")+" seconds|";
     }
 
     public void DisableText()

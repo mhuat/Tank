@@ -1,130 +1,137 @@
 ﻿using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.Experimental.UIElements;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
     [Header("Game Manager")]
+    public static GameManager instance;
+
     //Booleans
-    //private bool m_startGame; // use
-    //private bool m_waveOne; // use
-    //private bool m_hasSpawned; //Checks to see if the Player has spawned previously.
+    public bool gameOver;
+    public bool win;
+    public bool paused = false;
+    [HideInInspector] public bool isDead;
+    [HideInInspector] public bool spawned;
+    [HideInInspector] public bool spawnedEnemy;
 
     //GameObjects
+    [Tooltip("Player Tank Prefab")]
     public GameObject tankPrefab;
-    public GameObject enemyTankPrefab;
-    //[HideInInspector]
+    [Header("Player Instance")]
+    [SerializeField]
     public GameObject player;
-    public GameObject enemy;
-
-    //Instances
-    public PlayerController pC;
-    public AIController aC;
 
     //Lists
-    public List<GameObject> L_Enemy = new List<GameObject>();
+    //public List<GameObject> L_Enemy = new List<GameObject>();
+    public List<GameObject> enemyPrefabs = new List<GameObject>();
+    public List<Transform> playerSpawns = new List<Transform>();
+    public List<Transform> enemySpawns= new List<Transform>();
 
     [Header("Game Settings")]
     //Number Values
-    [Tooltip("Indication of when Game Starts")]
-    public float m_startCountDown; //Start Game timer.
-    [Tooltip("Set Time between Enemy Tank Spawns")]
-    public float m_enemyTankSpawnTimer; //Time between Enemy Spawns.
-    [Tooltip("Set Number of Enemy Tanks to Spawn")]
-    public int EnemyTanksToSpawn; //Number of Enemy Tanks to spawn.
-    private float timer; //Count down timer container.
-    private int EnemyTanksSpawned; //Number of Enemy Tanks spawned.
-    //public int numOfEnemyTanksKilled; Total number of "Enemy Tanks" destroyed.
-
-    //Static Variables
-    public static GameManager instance;
-
-    //Transforms
-    [HideInInspector] public Transform playerSpawnLocation;
-    [HideInInspector] public Transform enemySpawnLocation;
-    [HideInInspector] public Transform centerPosition;
-    [HideInInspector] public bool m_isDead;
-
-    /// <summary>
-    /// OnAwake(), Set Static GameObject as GameManager Instance.
-    /// </summary>
+    public float startCountDown;
+    public int stocks;
+    public int score;
+    public int numOfEnemies;
+     
     private void Awake(){
         if (instance == null) {
             instance = this;
         }else{ Destroy(gameObject); }
+        gameOver = false;
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
-    /// <summary>
-    /// Initialize Spawn Location.
-    /// </summary>
     private void Start(){
-        player = null;
-        m_isDead = true;
-        //m_startGame = false;
-        //m_hasSpawned = false;
-        playerSpawnLocation = GameObject.Find("Player Spawn Location").transform;
-        enemySpawnLocation = GameObject.Find("Enemy Spawn Location").transform;
-        centerPosition = GameObject.Find("Center Position").transform;
+        //player = null;
+        //tile = GameObject.Find("TT1(Clone)");
+        isDead = true;
+        spawnedEnemy = false;
+        foreach (var tf in GameObject.FindGameObjectsWithTag("PS"))
+        {
+            playerSpawns.Add(tf.transform);
+        }
+        foreach (var tf in GameObject.FindGameObjectsWithTag("ES"))
+        {
+            enemySpawns.Add(tf.transform);
+        }
     }
 
-    /// <summary>
-    /// If the player is dead, press any key to spawn a new player.
-    /// </summary>
     private void Update(){
         //Debug.Log(L_Enemy.Count);
         //To ensure only one instance of the player exists in the scene. Will be applied as re-spawn as well.
-
-        if (enemy == null)
+        if (stocks <= 0)
         {
-            enemy = GameObject.FindGameObjectWithTag("Enemy");
+            gameOver = true;
+            if(gameOver)
+            {
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
+                SceneManager.LoadScene(0);
+            }
         }
-        if (m_isDead)
+
+        if (numOfEnemies<=0&&spawned)
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+            SceneManager.LoadScene(2);
+        }
+
+        if (isDead&&spawned)
         {
             player = null;
-            pC = null;
+            stocks -= 1;
+            spawned = false;
         }
-        if (player == null && Input.GetKey(KeyCode.R))
+        if (!player&& Input.GetKeyDown(KeyCode.R)&&!spawned)
         {
             SpawnPlayer();
-            //m_startGame = true;
-            UIManager.UiManager.DisableText();
-            player = GameObject.Find("Tank(Clone)");
+            if (!spawnedEnemy)
+            {
+                SpawnEnemyTank();
+            }
+            UIManager.UiManager.DisableText();;
         }
+
+        if (Input.GetKeyDown(KeyCode.P)){
+            paused = !paused;
+        }
+        if (paused){
+            Time.timeScale = 0;
+        }else if (!paused){
+            Time.timeScale = 1;
+        }
+
     }
 
-    /// <summary>
-    /// Initialize player as an instance of the "tankPrefab".
-    /// </summary>
     void SpawnPlayer()
     {
-        GameObject playerInstance = Instantiate(tankPrefab, playerSpawnLocation.position, playerSpawnLocation.rotation);
+        int rand1 = Random.Range(0, playerSpawns.Count);
+        GameObject playerInstance = Instantiate(tankPrefab, playerSpawns[rand1].position, playerSpawns[rand1].rotation);
         player = playerInstance;
         player.tag = "Player";
-        m_isDead = false;
-        pC = player.GetComponent<PlayerController>();
+        isDead = false;
+        spawned = true;
+        //player = GameObject.Find("T95-2(Clone)");
+        //pC = player.GetComponent<PlayerController>();
     }
 
     void SpawnEnemyTank()
-    {     
-        GameObject enemyInstance = Instantiate(enemyTankPrefab, enemySpawnLocation.position, enemySpawnLocation.rotation) as GameObject;
-        aC = enemyInstance.GetComponent<AIController>();
-        L_Enemy.Add(enemyInstance);
-        EnemyTanksSpawned += 1;
-    }
-    void WaveOfEnemies()
     {
-        if (EnemyTanksSpawned < EnemyTanksToSpawn)
+        foreach (GameObject enemy in enemyPrefabs)
         {
-            timer += Time.deltaTime;
-            if (timer >= m_enemyTankSpawnTimer)
-            {
-                SpawnEnemyTank();
-                timer = 0;
-            }
+            GameObject enemyInstance = 
+            Instantiate(enemy, enemySpawns[Random.Range(0, enemySpawns.Count)]);         
+            //L_Enemy.Add(enemyInstance);
+            numOfEnemies += 1;
         }
-        else if (EnemyTanksSpawned == EnemyTanksToSpawn)
-        {
-            //m_waveOne = false;
-        }
+        spawnedEnemy = true;
     }
 
     //End of File
