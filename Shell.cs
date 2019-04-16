@@ -3,15 +3,12 @@
 [RequireComponent(typeof(AudioSource))]
 public class Shell : MonoBehaviour
 {
-    private GameManager gM;
-
     public GameObject smoke;
 
     public TankData tkRef;
 
     void Start()
     {
-        gM = GameManager.instance;
         tkRef = GetComponentInParent<TankData>();
         GetComponent<Rigidbody>().AddForce (transform.forward * tkRef.shellForce, ForceMode.Impulse);
     }
@@ -23,9 +20,23 @@ public class Shell : MonoBehaviour
         Instantiate(smoke, transform.position, Quaternion.identity);
         if (other.gameObject.GetComponent<TankData>()!= null){
            other.gameObject.GetComponent<TankData>().health-=GetComponentInParent<TankData>().tankDamage;
-           if (other.gameObject.GetComponentInParent<AIController>() != null)
+           if (other.gameObject.GetComponentInParent<AIController>())
            {
-               gM.score += other.gameObject.GetComponent<AIController>().pointValue;
+               if (!SceneHandler.multiplayer)
+               {
+                   GameManager.instance.score += other.gameObject.GetComponentInParent<AIController>().pointValue;
+               }
+               else
+               {
+                   if (tkRef.gameObject.CompareTag("Player"))
+                   {
+                       GameManager.instance.score += other.gameObject.GetComponentInParent<AIController>().pointValue;
+                   }
+                   if (tkRef.gameObject.CompareTag("PlayerTwo"))
+                   {
+                       GameManager.instance.scoreTwo += other.gameObject.GetComponentInParent<AIController>().pointValue;
+                   }
+               }
            }
         }
     }

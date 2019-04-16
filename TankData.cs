@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class TankData : MonoBehaviour
 {
@@ -18,6 +19,8 @@ public class TankData : MonoBehaviour
     readonly List<Renderer> rList = new List<Renderer>();
     public GameObject shellPrefab;
     public GameObject smoke;
+    public GameObject explosion;
+    private ParticleSystem explosionParticle;
     public GameObject airStrike;
     public GameObject cameraMissile;
     public bool airStrikeAvailable;
@@ -25,9 +28,11 @@ public class TankData : MonoBehaviour
     public bool invisibilityAvailable;
     public bool inv;
     private AIController enemyREf;
+    private PlayerController playerController;
 
     private void Start()
     {
+        playerController = gameObject.GetComponentInParent<PlayerController>();
         maxHealth = health;
         foreach (var r in GetComponentsInChildren<Renderer>())
         {
@@ -38,6 +43,13 @@ public class TankData : MonoBehaviour
         {
             enemyREf = gameObject.GetComponentInParent<AIController>();
         }
+
+        if (gameObject.GetComponentInParent<PlayerController>())
+        {
+            playerController = GetComponentInParent<PlayerController>();
+        }
+
+        explosionParticle = explosion.GetComponentInChildren<ParticleSystem>();
     }
     
     private void Update()
@@ -49,6 +61,9 @@ public class TankData : MonoBehaviour
 
         if (health <= 0)
         {
+            AudioSource.PlayClipAtPoint(AudioManager.instace.clipList[3], transform.position, 1f);
+            Instantiate(explosion, transform.position, transform.rotation);
+            explosionParticle.Play();
             Destroy(gameObject);
             if (enemyREf)
             {

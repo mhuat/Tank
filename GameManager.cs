@@ -11,22 +11,28 @@ public class GameManager : MonoBehaviour
     public static GameManager instance;
 
     //Booleans
-    public bool gameOver;
-    public bool win;
+    static bool gameOver;
+    public static bool win;
     public bool paused = false;
     [HideInInspector] public bool isDead;
+    [HideInInspector] public bool isDeadTwo;
     [HideInInspector] public bool spawned;
     [HideInInspector] public bool spawnedEnemy;
 
     //GameObjects
     [Tooltip("Player Tank Prefab")]
     public GameObject tankPrefab;
+    public GameObject tankPrefabTwo;
     [Header("Player Instance")]
     [SerializeField]
     public GameObject player;
+    [SerializeField]
+    public GameObject playerTwo;
+    public Canvas singleCanvas;
+    public Canvas multiCanvas;
 
     //Lists
-    //public List<GameObject> L_Enemy = new List<GameObject>();
+    public List<GameObject> playerList = new List<GameObject>();
     public List<GameObject> enemyPrefabs = new List<GameObject>();
     public List<Transform> playerSpawns = new List<Transform>();
     public List<Transform> enemySpawns= new List<Transform>();
@@ -37,6 +43,7 @@ public class GameManager : MonoBehaviour
     public int stocks;
     public int score;
     public int numOfEnemies;
+    public int scoreTwo;
      
     private void Awake(){
         if (instance == null) {
@@ -48,78 +55,159 @@ public class GameManager : MonoBehaviour
     }
 
     private void Start(){
-        //player = null;
-        //tile = GameObject.Find("TT1(Clone)");
-        isDead = true;
-        spawnedEnemy = false;
-        foreach (var tf in GameObject.FindGameObjectsWithTag("PS"))
-        {
-            playerSpawns.Add(tf.transform);
+        if (!SceneHandler.multiplayer)
+        {           
+            singleCanvas.enabled = true;
+            multiCanvas.enabled = false;
+            playerTwo = null;
+            isDead = true;
+            spawnedEnemy = false;
+            foreach (var tf in GameObject.FindGameObjectsWithTag("PS"))
+            {
+                playerSpawns.Add(tf.transform);
+            }
+
+            foreach (var tf in GameObject.FindGameObjectsWithTag("ES"))
+            {
+                enemySpawns.Add(tf.transform);
+            }
         }
-        foreach (var tf in GameObject.FindGameObjectsWithTag("ES"))
+        else
         {
-            enemySpawns.Add(tf.transform);
+            singleCanvas.enabled = false;
+            singleCanvas.GetComponentInParent<UIManager>().enabled = false;
+            multiCanvas.enabled = true;
+            GameObject.FindWithTag("MiniCam").SetActive(false);
+            foreach (var tf in GameObject.FindGameObjectsWithTag("PS"))
+            {
+                playerSpawns.Add(tf.transform);
+            }
+
+            foreach (var tf in GameObject.FindGameObjectsWithTag("ES"))
+            {
+                enemySpawns.Add(tf.transform);
+            }
+            SpawnPlayer();
+            SpawnEnemyTank();
         }
     }
 
     private void Update(){
-        //Debug.Log(L_Enemy.Count);
-        //To ensure only one instance of the player exists in the scene. Will be applied as re-spawn as well.
-        if (stocks <= 0)
+        if (!SceneHandler.multiplayer)
         {
-            gameOver = true;
-            if(gameOver)
+            if (stocks <= 0)
             {
+                gameOver = true;
+                win = false;
+            }
+
+            if (gameOver)
+            {
+                gameOver = false;
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
-                SceneManager.LoadScene(0);
+                SceneManager.LoadScene(2);
             }
-        }
 
-        if (numOfEnemies<=0&&spawned)
-        {
-            Cursor.visible = true;
-            Cursor.lockState = CursorLockMode.None;
-            SceneManager.LoadScene(2);
-        }
-
-        if (isDead&&spawned)
-        {
-            player = null;
-            stocks -= 1;
-            spawned = false;
-        }
-        if (!player&& Input.GetKeyDown(KeyCode.R)&&!spawned)
-        {
-            SpawnPlayer();
-            if (!spawnedEnemy)
+            if (numOfEnemies <= 0 && spawned)
             {
-                SpawnEnemyTank();
+                spawned = false;
+                gameOver = true;
+                win = true;
             }
-            UIManager.UiManager.DisableText();;
-        }
 
-        if (Input.GetKeyDown(KeyCode.P)){
-            paused = !paused;
+            if (isDead && spawned)
+            {
+                player = null;
+                stocks -= 1;
+                spawned = false;
+            }
+
+            if (!player && Input.GetKeyDown(KeyCode.R) && !spawned)
+            {
+                SpawnPlayer();
+                if (!spawnedEnemy)
+                {
+                    SpawnEnemyTank();
+                }    
+            }
+
+            if (Input.GetKeyDown(KeyCode.P))
+            {
+                paused = !paused;
+            }
+
+            if (paused)
+            {
+                Time.timeScale = 0;
+            }
+            else if (!paused)
+            {
+                Time.timeScale = 1;
+            }
         }
-        if (paused){
-            Time.timeScale = 0;
-        }else if (!paused){
-            Time.timeScale = 1;
+        else
+        {
+            
+            if (isDead&&isDeadTwo)
+            {
+                gameOver = true;
+                win = false;
+            }
+
+            if (gameOver)
+            {
+                gameOver = false;
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
+                SceneManager.LoadScene(2);
+            }
+
+            if (numOfEnemies <= 0 && spawned)
+            {
+                spawned = false;
+                gameOver = true;
+                win = true;
+            }
         }
 
     }
 
     void SpawnPlayer()
     {
-        int rand1 = Random.Range(0, playerSpawns.Count);
-        GameObject playerInstance = Instantiate(tankPrefab, playerSpawns[rand1].position, playerSpawns[rand1].rotation);
-        player = playerInstance;
-        player.tag = "Player";
-        isDead = false;
-        spawned = true;
-        //player = GameObject.Find("T95-2(Clone)");
-        //pC = player.GetComponent<PlayerController>();
+        if (!SceneHandler.multiplayer)
+        {
+            int rand1 = Random.Range(0, playerSpawns.Count);
+            GameObject playerInstance =
+                Instantiate(tankPrefab, playerSpawns[rand1].position, playerSpawns[rand1].rotation);
+            player = playerInstance;
+            player.tag = "Player";
+            isDead = false;
+            spawned = true;
+        }
+        else
+        {
+            stocks += 2;
+            int rand1 = Random.Range(0, playerSpawns.Count);
+            int rand2 = Random.Range(0, playerSpawns.Count);
+            GameObject playerInstance =
+                Instantiate(tankPrefab, playerSpawns[rand1].position, playerSpawns[rand1].rotation);
+            player = playerInstance;
+            GameObject secondInstance =
+                Instantiate(tankPrefabTwo, playerSpawns[rand2].position, playerSpawns[rand2].rotation);
+            playerTwo = secondInstance;
+            player.tag = "Player";
+            playerTwo.tag = "PlayerTwo";
+            Rect cameraOne = new Rect(0,0, .5f, 1f);
+            Rect cameraTwo = new Rect(.5f,0, .5f, 1f);
+            player.GetComponentInChildren<Camera>().rect = cameraOne;
+            playerTwo.GetComponentInChildren<Camera>().rect = cameraTwo;
+            playerList.Add(player);
+            playerList.Add(playerTwo);
+            isDead = false;
+            isDeadTwo = false;
+            spawned = true;
+        }
     }
 
     void SpawnEnemyTank()

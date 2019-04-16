@@ -33,20 +33,63 @@ public class PlayerController : MonoBehaviour
     }
 
     private void Update(){
-        if (canFire == false) LoadShell();
-        if (tankData.health <= 0){
-            GameManager.instance.isDead = true;
+        if (!SceneHandler.multiplayer)
+        {
+            if (canFire == false) LoadShell();
+            if (tankData.health <= 0)
+            {
+                GameManager.instance.isDead = true;
+            }
+        }
+        else
+        {
+            if (canFire == false) LoadShell();
+            if (tankData.health <= 0&&gameObject == GameManager.instance.player)
+            {
+                GameManager.instance.isDead = true;
+            }
+            if (tankData.health <= 0&& gameObject == GameManager.instance.playerTwo)
+            {
+                GameManager.instance.isDeadTwo = true;
+            }
         }
     }
 
     private void FixedUpdate(){
-        if (Input.GetKey(KeyCode.S)) MoveBackward();
-        if (Input.GetKey(KeyCode.W)) MoveForward();
-        if (Input.GetKey(KeyCode.A)) RotateLeft();
-        if (Input.GetKey(KeyCode.D)) RotateRight();
-        if (Input.GetKey(KeyCode.Space)) FireShell();
-        if(Input.GetKey(KeyCode.E)&&tankData.invisibilityAvailable) tankData.InvisibleOn();
-        if(Input.GetKey(KeyCode.F)&&tankData.cameraMissileAvailable) tankData.LaunchCameraMissile();
+        if (!SceneHandler.multiplayer)
+        {
+            if (Input.GetKey(KeyCode.S)) MoveBackward();
+            if (Input.GetKey(KeyCode.W)) MoveForward();
+            if (Input.GetKey(KeyCode.A)) RotateLeft();
+            if (Input.GetKey(KeyCode.D)) RotateRight();
+            if (Input.GetKey(KeyCode.Space)) FireShell();
+            if (Input.GetKey(KeyCode.E) && tankData.invisibilityAvailable) tankData.InvisibleOn();
+            if (Input.GetKey(KeyCode.F) && tankData.cameraMissileAvailable) tankData.LaunchCameraMissile();
+        }
+        else
+        {
+            if (gameObject == GameManager.instance.player)
+            {
+                if (Input.GetKey(KeyCode.S)) MoveBackward();
+                if (Input.GetKey(KeyCode.W)) MoveForward();
+                if (Input.GetKey(KeyCode.A)) RotateLeft();
+                if (Input.GetKey(KeyCode.D)) RotateRight();
+                if (Input.GetKey(KeyCode.Space)) FireShell();
+                if (Input.GetKey(KeyCode.E) && tankData.invisibilityAvailable) tankData.InvisibleOn();
+                if (Input.GetKey(KeyCode.F) && tankData.cameraMissileAvailable) tankData.LaunchCameraMissile();
+            }
+
+            if (gameObject == GameManager.instance.playerTwo)
+            {
+                if (Input.GetKey(KeyCode.DownArrow)) MoveBackward();
+                if (Input.GetKey(KeyCode.UpArrow)) MoveForward();
+                if (Input.GetKey(KeyCode.LeftArrow)) RotateLeft();
+                if (Input.GetKey(KeyCode.RightArrow)) RotateRight();
+                if (Input.GetKey(KeyCode.Keypad0)) FireShell();
+                if (Input.GetKey(KeyCode.Keypad1) && tankData.invisibilityAvailable) tankData.InvisibleOn();
+                if (Input.GetKey(KeyCode.Keypad2) && tankData.cameraMissileAvailable) tankData.LaunchCameraMissile();
+            }
+        }
     }
     
     public void OnTriggerEnter(Collider other){
@@ -80,7 +123,7 @@ public class PlayerController : MonoBehaviour
     private bool FireShell(){
 		if (canFire){ //Check to see if boolean is true.
             Instantiate(tankData.smoke, barrel.position, barrel.rotation);
-            AudioSource.PlayClipAtPoint(AudioManager.instace.clipList[0], barrel.position, .15f);
+            AudioSource.PlayClipAtPoint(AudioManager.instace.clipList[0], barrel.position, .4f); //.15f
             GameObject shellInstance = Instantiate(tankData.shellPrefab, new Vector3(tankData.tankBarrel.transform.position.x, tankData.tankBarrel.transform.position.y, tankData.tankBarrel.transform.position.z), tankData.tankBarrel.transform.rotation);
             shellInstance.tag = "Player Shell"; //Tag BulletInstance
             shellInstance.transform.SetParent(gameObject.transform); //Sets this bullet's parent to this instance's transform.
