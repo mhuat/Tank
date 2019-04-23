@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 public class AIController : MonoBehaviour
 {
@@ -51,6 +52,7 @@ public class AIController : MonoBehaviour
     //GameObjects
     public GameObject instance;
     public GameObject m_target;
+    public GameObject empty;
 
     //Instances
     public TankData tankData;
@@ -92,99 +94,211 @@ public class AIController : MonoBehaviour
 
     void Update()
     {
-
-        if (tankData.health <= 0)
+        if (!SceneHandler.multiplayer)
         {
-            //agent = null;
-            //ismAgentNotNull = false;
-            GameManager.instance.score += pointValue;
-        }
 
-        if (GameManager.instance.player && !m_target)
-        {
-            m_target = GameManager.instance.player; //If there is an active Player, initialize player reference.
-        }
+            if (tankData.health <= 0)
+            {
+                Instantiate(empty, transform.position, tf.rotation);
+                GameManager.instance.score += pointValue;
+            }
 
-        if (!GameManager.instance.player)
-        {
-            canHear = false;
-            canSee = false;
-        }
+            if (GameManager.instance.player && !m_target)
+            {
+                m_target = GameManager.instance.player; //If there is an active Player, initialize player reference.
+            }
 
-        if (GameManager.instance.player)
-        {
-            CanSee();
-            CanHear();
-        }
+            if (!GameManager.instance.player)
+            {
+                canHear = false;
+                canSee = false;
+            }
 
-        if (!canHear && ismAgentNotNull){
-            agent.isStopped = false;
-            target = patrol.patrolPoints[patrol.destination];
+            if (GameManager.instance.player)
+            {
+                CanSee();
+                CanHear();
+            }
+
+            if (!canHear && ismAgentNotNull)
+            {
+                agent.isStopped = false;
+                target = patrol.patrolPoints[patrol.destination];
+            }
+            else
+            {
+                if (personality == Personality.Alert && m_target)
+                {
+                    if (canSee)
+                    {
+                        LoadShell();
+                        FireShell();
+                    }
+
+                    if (canHear && ismAgentNotNull)
+                    {
+                        agent.isStopped = true;
+                        float torque = 20;
+                        float turn = Input.GetAxis("Horizontal");
+                        rb.AddTorque(transform.up * torque * turn);
+                        Vector3 targetDir = m_target.transform.position - tf.position;
+                        float step = rotationSpeed * Time.deltaTime;
+                        Vector3 newDir = Vector3.RotateTowards(tf.forward, targetDir, step, 0.0f);
+                        transform.rotation = Quaternion.LookRotation(newDir);
+                        /* //Good
+                        target = GameManager.instance.player.transform;
+                        Vector3 relativePos = target.position - tf.position;
+                        Quaternion rotation = Quaternion.LookRotation(relativePos);
+                        tf.rotation = Quaternion.Lerp(tf.rotation, rotation, rotationSpeed * Time.deltaTime);*/
+                    }
+                }
+
+                if (personality == Personality.Shy && m_target)
+                {
+                    if (canHear) Flee();
+                }
+
+                if (personality == Personality.Clever && m_target)
+                {
+                    if (canSee)
+                    {
+                        LoadShell();
+                        FireShell();
+                    }
+
+                    if (canHear)
+                    {
+                        float dist = Vector3.Distance(m_target.transform.position, tf.position);
+                        if (dist > 15f)
+                        {
+                            ShiftRotation();
+                            MoveToTarget();
+                        }
+                        else
+                        {
+                            ShiftRotation();
+                            agent.isStopped = true;
+                        }
+
+                    }
+                }
+
+                if (personality == Personality.Skillful && m_target)
+                {
+                    if (canSee)
+                    {
+                        LoadShell();
+                        FireShell();
+                    }
+
+                    if (canHear && ismAgentNotNull)
+                    {
+                        agent.isStopped = true;
+                        ShiftRotation();
+                    }
+                }
+            }
         }
         else
         {
-            if (personality == Personality.Alert && m_target)
-            {
-                if (canSee){
-                    LoadShell();
-                    FireShell();
-                }
 
-                if (canHear && ismAgentNotNull)
-                {
-                    agent.isStopped = true;
-                    float torque = 20;
-                    float turn = Input.GetAxis("Horizontal");
-                    rb.AddTorque(transform.up * torque * turn);
-                    Vector3 targetDir = m_target.transform.position - tf.position;
-                    float step = rotationSpeed * Time.deltaTime;
-                    Vector3 newDir = Vector3.RotateTowards(tf.forward, targetDir, step, 0.0f);
-                    transform.rotation = Quaternion.LookRotation(newDir);
-                    /* //Good
-                    target = GameManager.instance.player.transform;
-                    Vector3 relativePos = target.position - tf.position;
-                    Quaternion rotation = Quaternion.LookRotation(relativePos);
-                    tf.rotation = Quaternion.Lerp(tf.rotation, rotation, rotationSpeed * Time.deltaTime);*/
-                }
+            if (tankData.health <= 0)
+            {
+                Instantiate(empty, transform.position, tf.rotation);
             }
 
-            if (personality == Personality.Shy && m_target)
+            if (!m_target)
             {
-                if(canHear) Flee();
+                m_target = GameManager.instance.playerList[Random.Range(0,  GameManager.instance.playerList.Count)]; //If there is an active Player, initialize player reference.
             }
 
-            if (personality == Personality.Clever && m_target)
+            if (!m_target)
             {
-                if (canSee){
-                    LoadShell();
-                    FireShell();
-                }
-                if (canHear)
+                canHear = false;
+                canSee = false;
+            }
+
+            if (GameManager.instance.playerList.Count > 0&&m_target)
+            {
+                CanSee();
+                CanHear();
+            }
+
+            if (!canHear && ismAgentNotNull)
+            {
+                agent.isStopped = false;
+                target = patrol.patrolPoints[patrol.destination];
+            }
+            else
+            {
+                if (personality == Personality.Alert && m_target)
                 {
-                    float dist = Vector3.Distance(m_target.transform.position, tf.position);
-                    if (dist > 15f)
+                    if (canSee)
                     {
-                        ShiftRotation();
-                        MoveToTarget();
+                        LoadShell();
+                        FireShell();
                     }
-                    else
+
+                    if (canHear && ismAgentNotNull)
                     {
-                        ShiftRotation();
                         agent.isStopped = true;
+                        float torque = 20;
+                        float turn = Input.GetAxis("Horizontal");
+                        rb.AddTorque(transform.up * torque * turn);
+                        Vector3 targetDir = m_target.transform.position - tf.position;
+                        float step = rotationSpeed * Time.deltaTime;
+                        Vector3 newDir = Vector3.RotateTowards(tf.forward, targetDir, step, 0.0f);
+                        transform.rotation = Quaternion.LookRotation(newDir);
+                        /* //Good
+                        target = GameManager.instance.player.transform;
+                        Vector3 relativePos = target.position - tf.position;
+                        Quaternion rotation = Quaternion.LookRotation(relativePos);
+                        tf.rotation = Quaternion.Lerp(tf.rotation, rotation, rotationSpeed * Time.deltaTime);*/
+                    }
+                }
+
+                if (personality == Personality.Shy && m_target)
+                {
+                    if (canHear) Flee();
+                }
+
+                if (personality == Personality.Clever && m_target)
+                {
+                    if (canSee)
+                    {
+                        LoadShell();
+                        FireShell();
                     }
 
+                    if (canHear)
+                    {
+                        float dist = Vector3.Distance(m_target.transform.position, tf.position);
+                        if (dist > 15f)
+                        {
+                            ShiftRotation();
+                            MoveToTarget();
+                        }
+                        else
+                        {
+                            ShiftRotation();
+                            agent.isStopped = true;
+                        }
+                    }
                 }
-            }
-            if (personality == Personality.Skillful && m_target)
-            {
-                if (canSee){
-                    LoadShell();
-                    FireShell();
-                }
-                if (canHear&& ismAgentNotNull)
+
+                if (personality == Personality.Skillful && m_target)
                 {
-                    agent.isStopped = true;
-                    ShiftRotation();
+                    if (canSee)
+                    {
+                        LoadShell();
+                        FireShell();
+                    }
+
+                    if (canHear && ismAgentNotNull)
+                    {
+                        agent.isStopped = true;
+                        ShiftRotation();
+                    }
                 }
             }
         }
@@ -252,7 +366,14 @@ public class AIController : MonoBehaviour
         {
             if (Physics.Raycast(tf.position, tf.TransformDirection(Vector3.forward), out hit, sightDistance))
             {
-                canSee = hit.transform.CompareTag("Player");
+                if (hit.transform.CompareTag("Player"))
+                {
+                    canSee = hit.transform.CompareTag("Player");
+                }
+                if(hit.transform.CompareTag("PlayerTwo"))
+                {
+                    canSee = hit.transform.CompareTag("PlayerTwo");
+                }
             }
         }
     }

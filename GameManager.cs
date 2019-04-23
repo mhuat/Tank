@@ -56,7 +56,7 @@ public class GameManager : MonoBehaviour
 
     private void Start(){
         if (!SceneHandler.multiplayer)
-        {           
+        {
             singleCanvas.enabled = true;
             multiCanvas.enabled = false;
             playerTwo = null;
@@ -148,7 +148,6 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            
             if (isDead&&isDeadTwo)
             {
                 gameOver = true;

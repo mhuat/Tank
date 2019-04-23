@@ -5,8 +5,12 @@ using UnityEngine.SceneManagement;
 public class SceneHandler : MonoBehaviour
 {
     public static bool multiplayer;
+    public static bool FriendlyFire;
+    public Image optionsImage;
     public Slider audioVolume;
+    public Toggle ff;
     public bool optionsOpened;
+    
 
     public void StartGame()
     {
@@ -36,7 +40,10 @@ public class SceneHandler : MonoBehaviour
     {
         optionsOpened = !optionsOpened;
         audioVolume.gameObject.SetActive(optionsOpened);
+        ff.gameObject.SetActive(optionsOpened);
         AudioListener.volume=audioVolume.value;
+        FriendlyFire = ff.isOn;
+        optionsImage.enabled = optionsOpened;
     }
 
     public void Exit()

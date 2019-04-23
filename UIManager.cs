@@ -1,32 +1,24 @@
 ﻿using System;
+using System.Globalization;
 using System.Net.Mime;
 using UnityEngine;
 using UnityEngine.Analytics;
 using UnityEngine.UI;
+using Image = UnityEngine.Experimental.UIElements.Image;
 
 public class UIManager : MonoBehaviour
 {
-    [Header("User Interface Manager")]
-    
-    //Static Variables
-    //public static UIManager UiManager;    
+    [Header("User Interface Manager")] 
 
     //UI
     public Text m_displayText; //Text to Output to Display.
     public Text scoreText;
     public Text twoScore;
+    public Text damage;
     public Text stocksText; 
     public Slider playerHealth;
     public Slider twoHealth;
-
-    /*private void Awake()
-    {
-        if (UiManager == null)
-        {
-            UiManager = this;
-        }
-        else { Destroy(gameObject); }
-    }*/
+    public Slider loading;
 
     private void Start ()
     {
@@ -49,12 +41,14 @@ public class UIManager : MonoBehaviour
             {
                 DisableText();
             }
-
             stocksText.text = "Stocks: " + Convert.ToString(GameManager.instance.stocks);
             scoreText.text = "Your Score: " + Convert.ToString(GameManager.instance.score);
-            if (GameManager.instance.player)
+            if (!GameManager.instance.isDead)
             {
+                TankData tkRef = GameManager.instance.player.GetComponentInParent<TankData>();
+                damage.text = "Damage: " + tkRef.tankDamage;
                 playerHealth.value = GameManager.instance.player.GetComponent<TankData>().health;
+                loading.value = GameManager.instance.player.GetComponentInParent<TankData>().fireRate;
             }
         }
         else
@@ -63,12 +57,14 @@ public class UIManager : MonoBehaviour
             {
                 playerHealth.value = GameManager.instance.player.GetComponent<TankData>().health;
                 scoreText.text = "Your Score: " + Convert.ToString(GameManager.instance.score);
+                damage.text = "";
             }
 
             if (GameManager.instance.playerTwo)
             {
                 twoHealth.value = GameManager.instance.playerTwo.GetComponent<TankData>().health;
                 twoScore.text = "Your Score: " + Convert.ToString(GameManager.instance.scoreTwo);
+                damage.text = "";
             }
         }
     }

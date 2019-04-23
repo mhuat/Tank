@@ -19,7 +19,17 @@ public class Shell : MonoBehaviour
         Destroy(gameObject);
         Instantiate(smoke, transform.position, Quaternion.identity);
         if (other.gameObject.GetComponent<TankData>()!= null){
-           other.gameObject.GetComponent<TankData>().health-=GetComponentInParent<TankData>().tankDamage;
+            if (SceneHandler.multiplayer&&!SceneHandler.FriendlyFire)
+            {
+                if (other.gameObject.GetComponent<PlayerController>()&&GetComponentInParent<PlayerController>())
+                {
+                    other.gameObject.GetComponent<TankData>().health+=0;
+                }
+            }
+            else
+            {
+                other.gameObject.GetComponent<TankData>().health-=GetComponentInParent<TankData>().tankDamage;
+            }
            if (other.gameObject.GetComponentInParent<AIController>())
            {
                if (!SceneHandler.multiplayer)
@@ -31,10 +41,12 @@ public class Shell : MonoBehaviour
                    if (tkRef.gameObject.CompareTag("Player"))
                    {
                        GameManager.instance.score += other.gameObject.GetComponentInParent<AIController>().pointValue;
+                       other.gameObject.GetComponent<TankData>().health -= GetComponentInParent<TankData>().tankDamage;
                    }
                    if (tkRef.gameObject.CompareTag("PlayerTwo"))
                    {
                        GameManager.instance.scoreTwo += other.gameObject.GetComponentInParent<AIController>().pointValue;
+                       other.gameObject.GetComponent<TankData>().health -= GetComponentInParent<TankData>().tankDamage;
                    }
                }
            }

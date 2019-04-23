@@ -28,7 +28,7 @@ public class TankData : MonoBehaviour
     public bool invisibilityAvailable;
     public bool inv;
     private AIController enemyREf;
-    private PlayerController playerController;
+    public PlayerController playerController;
 
     private void Start()
     {
