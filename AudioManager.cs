@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class AudioManager : MonoBehaviour
 {
-    public static AudioManager instace;
+    public static AudioManager instance;
     [SerializeField]
     public List<AudioClip> clipList = new List<AudioClip>();
 
