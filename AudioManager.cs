@@ -10,6 +10,6 @@ public class AudioManager : MonoBehaviour
 
     private void Awake()
     {
-        instace = this;
+        instance = this;
     }
 }
