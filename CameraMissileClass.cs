@@ -11,7 +11,6 @@ public class CameraMissileClass : MonoBehaviour
 
     void Start()
     {
-        //miniCam = GameObject.FindGameObjectWithTag("MiniCam").GetComponent<Camera>();
         AudioSource.PlayClipAtPoint(AudioManager.instance.clipList[4], transform.position, .8f);
         GetComponent<Rigidbody>().AddForce(transform.forward * force, ForceMode.Impulse);
         if (SceneHandler.multiplayer)
