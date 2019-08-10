@@ -5,7 +5,7 @@ using UnityEngine;
 public class CameraMissileClass : MonoBehaviour
 {
 
-    [SerializeField]//private Camera miniCam;
+    [SerializeField]
     private float force = 5f;
     public GameObject explosion;
 
