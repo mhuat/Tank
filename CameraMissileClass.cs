@@ -12,7 +12,7 @@ public class CameraMissileClass : MonoBehaviour
     void Start()
     {
         //miniCam = GameObject.FindGameObjectWithTag("MiniCam").GetComponent<Camera>();
-        AudioSource.PlayClipAtPoint(AudioManager.instace.clipList[4], transform.position, .8f);
+        AudioSource.PlayClipAtPoint(AudioManager.instance.clipList[4], transform.position, .8f);
         GetComponent<Rigidbody>().AddForce(transform.forward * force, ForceMode.Impulse);
         if (SceneHandler.multiplayer)
         {
@@ -49,7 +49,7 @@ public class CameraMissileClass : MonoBehaviour
 
     void Explode()
     {
-        AudioSource.PlayClipAtPoint(AudioManager.instace.clipList[1], transform.position, .03f);
+        AudioSource.PlayClipAtPoint(AudioManager.instance.clipList[1], transform.position, .03f);
         Instantiate(explosion, transform.position, transform.rotation);
         Destroy(gameObject);
     }
