@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,8 +8,5 @@ public class AudioManager : MonoBehaviour
     [SerializeField]
     public List<AudioClip> clipList = new List<AudioClip>();
 
-    private void Awake()
-    {
-        instance = this;
-    }
+    private void Awake(){if(instance==null){instance = this;}else{ Destroy(this)};}
 }
